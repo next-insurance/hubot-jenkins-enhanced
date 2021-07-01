@@ -22,6 +22,7 @@
 #   hubot jenkins describe <job|alias|job folder/job> - Describes the specified Jenkins job
 #   hubot jenkins getAlias <name> - Retrieve value of job name alias
 #   hubot jenkins list <filter> - lists Jenkins jobs grouped by server
+#   hubot jenkins filter <view> - lists Jenkins jobs grouped by view
 #   hubot jenkins l <jobNumber> - Details about the last build for the job specified by jobNumber. List jobs to get number.
 #   hubot jenkins last <job|alias|job folder/job> - Details about the last build for the specified Jenkins job
 #   hubot jenkins servers - Lists known jenkins servers
@@ -367,6 +368,10 @@ class HubotJenkinsPlugin extends HubotMessenger
   list: (isInit = false) =>
     @_requestFactory "api/json", if isInit then @_handleListInit else @_handleList
 
+  filterList: (isInit = false) =>
+    tab = @msg.match[1].trim()
+    @_requestFactory "view/#{tab}/api/json?tree=jobs[name,color]", if isInit then @_handleFilterListInit else @_handleFilterList
+
   listAliases: =>
     aliases  = @_getSavedAliases()
     response = []
@@ -690,10 +695,28 @@ class HubotJenkinsPlugin extends HubotMessenger
   _handleList: (err, res, body, server, folder) =>
     @_processListResult err, res, body, server
 
+  _handleFilterList: (err, res, body, server, folder) =>
+    @_processFilterListResult err, res, body, server
+
   _handleListInit: (err, res, body, server, folder) =>
     @_processListResult err, res, body, server, false
 
+  _handleFilterListInit: (err, res, body, server, folder) =>
+    @_processFilterListResult err, res, body, server, false
+
   _processListResult: (err, res, body, server, print = true) =>
+    if err
+      @send "It appears an error occurred while contacting your Jenkins instance.  The error I received was #{err.code} from #{server.url}.  Please verify that your Jenkins instance is configured properly."
+      return
+
+    try
+      content = JSON.parse(body)
+      @_outputStatus = print
+      @_makeRootFolderForServer content.jobs, server
+    catch error
+      @send error
+
+  _processFilterListResult: (err, res, body, server, print = true) =>
     if err
       @send "It appears an error occurred while contacting your Jenkins instance.  The error I received was #{err.code} from #{server.url}.  Please verify that your Jenkins instance is configured properly."
       return
@@ -739,6 +762,9 @@ module.exports = (robot) ->
 
   robot.respond /j(?:enkins)? list( (.+))?/i, id: 'jenkins.list', (msg) ->
     pluginFactory(msg).list()
+
+  robot.respond /j(?:enkins)? filter( (.+))?/i, id: 'jenkins.filterList', (msg) ->
+    pluginFactory(msg).filterList()
 
   robot.respond /j(?:enkins)? describe (.*)/i, id: 'jenkins.describe', (msg) ->
     pluginFactory(msg).describe()
