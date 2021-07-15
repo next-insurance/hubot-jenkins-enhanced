@@ -19,7 +19,7 @@
     "url": "https://github.com/codeandfury/hubot-jenkins-enhanced/issues"
   },
   "dependencies": {
-    "coffee-script": "~1.6"
+    "coffee-script": "~1.12.7"
   },
   "devDependencies": {},
   "main": "index.coffee",
